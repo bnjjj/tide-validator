@@ -2,7 +2,7 @@
 use async_std::io;
 use async_std::task;
 use serde::{Deserialize, Serialize};
-use tide_validator::{ParameterType, ValidatorMiddleware};
+use tide_validator::{HttpField, ValidatorMiddleware};
 
 #[derive(Deserialize, Serialize)]
 struct Cat {
@@ -14,11 +14,11 @@ fn main() -> io::Result<()> {
         let mut app = tide::new();
 
         let mut validator_middleware = ValidatorMiddleware::new();
-        validator_middleware.add_validator(ParameterType::Param("n"), is_number);
-        validator_middleware.add_validator(ParameterType::Header("X-Custom-Header"), is_number);
-        validator_middleware.add_validator(ParameterType::QueryParam("test"), is_bool);
-        validator_middleware.add_validator(ParameterType::Cookie("session"), is_required);
-        validator_middleware.add_validator(ParameterType::Cookie("session"), is_length_under(20));
+        validator_middleware.add_validator(HttpField::Param("n"), is_number);
+        validator_middleware.add_validator(HttpField::Header("X-Custom-Header"), is_number);
+        validator_middleware.add_validator(HttpField::QueryParam("test"), is_bool);
+        validator_middleware.add_validator(HttpField::Cookie("session"), is_required);
+        validator_middleware.add_validator(HttpField::Cookie("session"), is_length_under(20));
 
         // To access and let it works you have to launch it on localhost:8080/test/4 for example and put a cookie session
         app.at("/test/:n").middleware(validator_middleware).get(
