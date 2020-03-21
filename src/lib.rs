@@ -14,7 +14,7 @@
 //!
 //! To create your own validator it's just a closure to create with this form:
 //!
-//! ```no_run
+//! ```rust,no_run,compile_fail
 //! // The first closure's parameter is the parameter/queryparameter/cookie/header name.
 //! // The second parameter is the value of this HTTP element. None means the field doesn't exist in the request (useful to force specific fields to be required).
 //! Fn(&str, Option<&str>) -> Result<(), T> + Send + Sync + 'static where T: Serialize + Send + Sync + 'static
@@ -23,7 +23,7 @@
 //! # Examples
 //!
 //! __simple validation__
-//! ```no_run
+//! ```rust,no_run,compile_fail
 //! // Our own validator is a simple closure to check if the field is a number
 //! fn is_number(field_name: &str, field_value: Option<&str>) -> Result<(), String> {
 //!     if let Some(field_value) = field_value {
@@ -53,7 +53,7 @@
 //! ```
 //!
 //! __chain multiple validators__
-//! ```no_run
+//! ```rust,no_run,compile_fail
 //! // This validator force element to be required
 //! fn is_required(field_name: &str, field_value: Option<&str>) -> Result<(), String> {
 //!     if field_value.is_none() {
@@ -87,7 +87,7 @@
 //! ```
 //!
 //! __Use your own custom error__
-//! ```no_run
+//! ```rust,no_run,compile_fail
 //! // Your custom error which your api will send if an error occurs
 //! #[derive(Debug, Serialize)]
 //! struct CustomError {
@@ -115,7 +115,7 @@
 //! ```
 //!
 //! __Dynamic validators__
-//! ```no_run
+//! ```rust,no_run,compile_fail
 //! // Validator inside a function as a closure to be dynamic with max_length
 //! fn is_length_under(
 //!     max_length: usize,
@@ -183,7 +183,7 @@ where
     ///
     /// # Example
     ///
-    /// ```no_run
+    /// ```rust,no_run,compile_fail
     /// fn main() -> io::Result<()> {
     ///     task::block_on(async {
     ///         let mut app = tide::new();
@@ -220,7 +220,7 @@ where
     ///
     /// # Example
     ///
-    /// ```no_run
+    /// ```rust,no_run,compile_fail
     /// fn main() -> io::Result<()> {
     ///     task::block_on(async {
     ///         let mut app = tide::new();
