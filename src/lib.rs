@@ -440,6 +440,7 @@ mod tests {
         let mut inner = tide::new();
         let mut validators = ValidatorMiddleware::new();
         validators.add_validator(HttpField::QueryParam("test"), is_length_under(10));
+        validators.add_validator(HttpField::Cookie("session"), is_length_under(10));
         inner
             .at("/foo")
             .middleware(validators)
@@ -471,5 +472,74 @@ mod tests {
             err.message,
             String::from("element 'test' which is equals to 'blablablablabla' have not the maximum length of 10")
         );
+    }
+
+    #[inline]
+    fn is_bool(field_name: &str, field_value: Option<&str>) -> Result<(), CustomError> {
+        if let Some(field_value) = field_value {
+            match field_value {
+                "true" | "false" => return Ok(()),
+                other => {
+                    return Err(CustomError {
+                        status_code: 400,
+                        message: format!(
+                            "field '{}' = '{}' is not a valid boolean",
+                            field_name, other
+                        ),
+                    })
+                }
+            }
+        }
+        Ok(())
+    }
+
+    #[inline]
+    fn is_required(field_name: &str, field_value: Option<&str>) -> Result<(), CustomError> {
+        if field_value.is_none() {
+            Err(CustomError {
+                status_code: 400,
+                message: format!("'{}' is mandatory", field_name),
+            })
+        } else {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn validator_chains() {
+        let mut inner = tide::new();
+        let mut validators = ValidatorMiddleware::new();
+        validators.add_validator(HttpField::QueryParam("test"), is_length_under(10));
+        validators.add_validator(HttpField::Header("X-Is-Connected"), is_required);
+        validators.add_validator(HttpField::Header("X-Is-Connected"), is_bool);
+        inner
+            .at("/foo")
+            .middleware(validators)
+            .get(|_| async { "foo" });
+
+        let mut server = make_server(inner.into_http_service()).unwrap();
+
+        let mut buf = Vec::new();
+        let req = http::Request::get("/foo?test=coucou")
+            .header("X-Is-Connected", "true")
+            .body(Body::empty())
+            .unwrap();
+        let res = server.simulate(req).unwrap();
+        assert_eq!(res.status(), 200);
+        block_on(res.into_body().read_to_end(&mut buf)).unwrap();
+        assert_eq!(&*buf, &*b"foo");
+
+        buf.clear();
+        let req = http::Request::get("/foo?test=foo")
+            .body(Body::empty())
+            .unwrap();
+        let res = server.simulate(req).unwrap();
+        assert_eq!(res.status(), 400);
+        block_on(res.into_body().read_to_end(&mut buf)).unwrap();
+
+        let err: CustomError = serde_json::from_slice(&buf[..]).unwrap();
+
+        assert_eq!(err.status_code, 400usize);
+        assert_eq!(err.message, String::from("'X-Is-Connected' is mandatory"));
     }
 }

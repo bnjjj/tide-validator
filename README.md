@@ -1,6 +1,20 @@
-# tide-validator
+<h1 align="center">tide-validator</h1>
+<br />
 
-tide-validator is a middleware working with [Tide](https://github.com/http-rs/tide), a web framework in Rust which let you validate your data coming from a request. You'll be able to create custom validators to validate your HTTP parameters, query parameters, cookies and headers.
+<div align="center">
+  <!-- Crates version -->
+  <a href="https://crates.io/crates/tide-validator">
+    <img src="https://img.shields.io/crates/v/tide-validator.svg?style=flat-square"
+    alt="Crates.io version" />
+  </a>
+  <!-- docs.rs docs -->
+  <a href="https://docs.rs/tide-validator">
+    <img src="https://img.shields.io/badge/docs-latest-blue.svg?style=flat-square"
+      alt="docs.rs docs" />
+  </a>
+</div>
+
+__tide-validator is a middleware working with [Tide](https://github.com/http-rs/tide), a web framework in Rust which let you validate your data coming from a request. You'll be able to create custom validators to validate your HTTP parameters, query parameters, cookies and headers.__
 
 # Features
 
@@ -15,7 +29,8 @@ To create your own validator it's just a closure to create with this form:
 
 ```rust
 // The first closure's parameter is the parameter/queryparameter/cookie/header name.
-// The second parameter is the value of this HTTP element. None means the field doesn't exist in the request (useful to force specific fields to be required).
+// The second parameter is the value of this HTTP element.
+// None means the field doesn't exist in the request (useful to force specific fields to be required).
 Fn(&str, Option<&str>) -> Result<(), T> + Send + Sync + 'static where T: Serialize + Send + Sync + 'static
 ```
 
@@ -149,4 +164,3 @@ validator_middleware.add_validator(HttpField::Cookie("session"), is_length_under
 ## Todo
 
 + Add right version for tide and not the git repository in cargo.toml
-+ Add in documentation the minimal version of Tide
