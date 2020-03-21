@@ -354,8 +354,122 @@ where
 
 #[cfg(test)]
 mod tests {
+
+    use super::{HttpField, ValidatorMiddleware};
+
+    use async_std::io::prelude::*;
+    use futures::executor::block_on;
+    use http_service::Body;
+    use http_service_mock::make_server;
+    use serde::{Deserialize, Serialize};
+
+    #[inline]
+    fn is_number(field_name: &str, field_value: Option<&str>) -> Result<(), String> {
+        if let Some(field_value) = field_value {
+            if field_value.parse::<i64>().is_err() {
+                return Err(format!(
+                    "field '{}' = '{}' is not a valid number",
+                    field_name, field_value
+                ));
+            }
+        }
+
+        Ok(())
+    }
+
     #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
+    fn validator_simple() {
+        let mut inner = tide::new();
+        let mut validators = ValidatorMiddleware::new();
+        validators.add_validator(HttpField::Param("bar"), is_number);
+        inner
+            .at("/foo/:bar")
+            .middleware(validators)
+            .get(|_| async { "foo" });
+
+        let mut server = make_server(inner.into_http_service()).unwrap();
+
+        let mut buf = Vec::new();
+        let req = http::Request::get("/foo/4").body(Body::empty()).unwrap();
+        let res = server.simulate(req).unwrap();
+        assert_eq!(res.status(), 200);
+        block_on(res.into_body().read_to_end(&mut buf)).unwrap();
+        assert_eq!(&*buf, &*b"foo");
+
+        buf.clear();
+        let req = http::Request::get("/foo/bar").body(Body::empty()).unwrap();
+        let res = server.simulate(req).unwrap();
+        assert_eq!(res.status(), 400);
+        block_on(res.into_body().read_to_end(&mut buf)).unwrap();
+        assert_eq!(
+            String::from_utf8_lossy(&buf[..]),
+            String::from(r#""field 'bar' = 'bar' is not a valid number""#)
+        );
+    }
+
+    #[derive(Debug, Serialize, Deserialize)]
+    struct CustomError {
+        status_code: usize,
+        message: String,
+    }
+
+    fn is_length_under(
+        max_length: usize,
+    ) -> Box<dyn Fn(&str, Option<&str>) -> Result<(), CustomError> + Send + Sync + 'static> {
+        Box::new(
+            move |field_name: &str, field_value: Option<&str>| -> Result<(), CustomError> {
+                if let Some(field_value) = field_value {
+                    if field_value.len() > max_length {
+                        let my_error = CustomError {
+                            status_code: 400,
+                            message: format!(
+                            "element '{}' which is equals to '{}' have not the maximum length of {}",
+                            field_name, field_value, max_length
+                        ),
+                        };
+                        return Err(my_error);
+                    }
+                }
+                Ok(())
+            },
+        )
+    }
+
+    #[test]
+    fn validator_custom() {
+        let mut inner = tide::new();
+        let mut validators = ValidatorMiddleware::new();
+        validators.add_validator(HttpField::QueryParam("test"), is_length_under(10));
+        inner
+            .at("/foo")
+            .middleware(validators)
+            .get(|_| async { "foo" });
+
+        let mut server = make_server(inner.into_http_service()).unwrap();
+
+        let mut buf = Vec::new();
+        let req = http::Request::get("/foo?test=coucou")
+            .body(Body::empty())
+            .unwrap();
+        let res = server.simulate(req).unwrap();
+        assert_eq!(res.status(), 200);
+        block_on(res.into_body().read_to_end(&mut buf)).unwrap();
+        assert_eq!(&*buf, &*b"foo");
+
+        buf.clear();
+        let req = http::Request::get("/foo?test=blablablablabla")
+            .body(Body::empty())
+            .unwrap();
+        let res = server.simulate(req).unwrap();
+        assert_eq!(res.status(), 400);
+        block_on(res.into_body().read_to_end(&mut buf)).unwrap();
+
+        let err: CustomError = serde_json::from_slice(&buf[..]).unwrap();
+
+        assert_eq!(err.status_code, 400usize);
+        assert_eq!(
+            err.message,
+            String::from("element 'test' which is equals to 'blablablablabla' have not the maximum length of 10")
+        );
     }
 }
