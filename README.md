@@ -14,6 +14,8 @@
   </a>
 </div>
 
+/!\ Currently waiting for a new release of Tide before release this one on crates.io /!\
+
 __tide-validator is a middleware working with [Tide](https://github.com/http-rs/tide), a web framework in Rust which let you validate your data coming from a request. You'll be able to create custom validators to validate your HTTP parameters, query parameters, cookies and headers.__
 
 # Features
