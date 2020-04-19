@@ -1,6 +1,6 @@
 [package]
 name = "tide-validator"
-version = "0.1.0"
+version = "0.1.1"
 description = "Data validator for Tide web framework"
 authors = ["Benjamin Coenen <benjamin.coenen@hotmail.com>"]
 edition = "2018"
