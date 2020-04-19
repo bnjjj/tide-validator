@@ -20,7 +20,7 @@ repository = "https://github.com/bnjjj/tide-validator"
 tide = "0.7.0"
 futures = "0.3.4"
 serde = { version = "1.0.106", features = ["derive"] }
-async-std = "1.5.0"
+async-std = { version = "1.5.0", features = ["attributes"] }
 
 [dev-dependencies]
 async-std = "1.5.0"
