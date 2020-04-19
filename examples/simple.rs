@@ -2,6 +2,7 @@
 use async_std::io;
 use async_std::task;
 use serde::{Deserialize, Serialize};
+use tide::http_types::StatusCode;
 use tide_validator::{HttpField, ValidatorMiddleware};
 
 #[derive(Deserialize, Serialize)]
@@ -26,7 +27,7 @@ fn main() -> io::Result<()> {
                 let cat = Cat {
                     name: "Gribouille".into(),
                 };
-                tide::Response::new(200).body_json(&cat).unwrap()
+                tide::Response::new(StatusCode::Ok).body_json(&cat).unwrap()
             },
         );
 

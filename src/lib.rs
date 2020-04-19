@@ -47,7 +47,7 @@
 //!         let cat = Cat {
 //!             name: "Gribouille".into(),
 //!         };
-//!         tide::Response::new(200).body_json(&cat).unwrap()
+//!         tide::Response::new(StatusCode::Ok).body_json(&cat).unwrap()
 //!      });
 //! app.listen("127.0.0.1:8080").await?;
 //! ```
@@ -79,7 +79,7 @@
 //!            let cat = Cat {
 //!                 name: "Mozart".into(),
 //!            };
-//!             tide::Response::new(200).body_json(&cat).unwrap()
+//!             tide::Response::new(StatusCode::Ok).body_json(&cat).unwrap()
 //!         },
 //!     );
 //!
@@ -141,14 +141,21 @@
 //!
 //! // Simply call it on a cookie `session` for example:
 //! validator_middleware.add_validator(HttpField::Cookie("session"), is_length_under(20));
+//!
 //! ```
+//!
+//! For more details about examples check out [the `examples` directory on GitHub](https://github.com/bnjjj/tide-validator/tree/master/examples)
 
 use std::collections::HashMap;
+use std::str::FromStr;
 use std::sync::Arc;
 
 use futures::future::BoxFuture;
 use serde::Serialize;
-use tide::{Middleware, Next, Request, Response};
+use tide::{
+    http_types::{headers::HeaderName, StatusCode},
+    Middleware, Next, Request, Response,
+};
 // trait Validator = Fn(&str) -> Result<(), String> + Send + Sync + 'static;
 
 /// Enum to indicate on which HTTP field you want to make validations
@@ -192,7 +199,7 @@ where
     ///         validator_middleware.add_validator(HttpField::Header("X-Custom-Header"), is_number);
     ///
     ///         app.at("/test/:n").middleware(validator_middleware).get(
-    ///             |_: tide::Request<()>| async move { tide::Response::new(200).body_json("test").unwrap() },
+    ///             |_: tide::Request<()>| async move { tide::Response::new(StatusCode::Ok).body_json("test").unwrap() },
     ///         );
     ///
     ///         app.listen("127.0.0.1:8080").await?;
@@ -230,7 +237,7 @@ where
     ///         validator_middleware.add_validator(HttpField::QueryParam("myqueryparam"), is_required);
     ///
     ///         app.at("/test/:n").middleware(validator_middleware).get(
-    ///             |_: tide::Request<()>| async move { tide::Response::new(200).body_json("test").unwrap() },
+    ///             |_: tide::Request<()>| async move { tide::Response::new(StatusCode::Ok).body_json("test").unwrap() },
     ///         );
     ///
     ///         app.listen("127.0.0.1:8080").await?;
@@ -268,9 +275,9 @@ where
                             if let Err(err) =
                                 validator(param_name, param_found.ok().as_ref().map(|p| &p[..]))
                             {
-                                return Response::new(400).body_json(&err).unwrap_or_else(
+                                return Response::new(StatusCode::BadRequest).body_json(&err).unwrap_or_else(
                                         |err| {
-                                            return Response::new(500).body_string(format!(
+                                            return Response::new(StatusCode::InternalServerError).body_string(format!(
                                                 "cannot serialize your parameter validator for '{}' error : {:?}",
                                                 param_name,
                                                 err
@@ -284,10 +291,11 @@ where
                         if query_parameters.is_none() {
                             match ctx.query::<HashMap<String, String>>() {
                                 Err(err) => {
-                                    return Response::new(500).body_string(format!(
-                                        "cannot read query parameters: {:?}",
-                                        err
-                                    ))
+                                    return Response::new(StatusCode::InternalServerError)
+                                        .body_string(format!(
+                                            "cannot read query parameters: {:?}",
+                                            err
+                                        ))
                                 }
                                 Ok(qps) => query_parameters = Some(qps),
                             }
@@ -299,9 +307,9 @@ where
                                 param_name,
                                 query_parameters.get(&param_name[..]).map(|p| &p[..]),
                             ) {
-                                return Response::new(400).body_json(&err).unwrap_or_else(
+                                return Response::new(StatusCode::BadRequest).body_json(&err).unwrap_or_else(
                                         |err| {
-                                            return Response::new(500).body_string(format!(
+                                            return Response::new(StatusCode::InternalServerError).body_string(format!(
                                                 "cannot serialize your query parameter validator for '{}' error : {:?}",
                                                 param_name,
                                                 err
@@ -313,11 +321,13 @@ where
                     }
                     HttpField::Header(header_name) => {
                         for validator in validators {
-                            let header_found: Option<&str> = ctx.header(header_name);
+                            let header_found: Option<&str> = ctx
+                                .header(&HeaderName::from_str(header_name).unwrap())
+                                .map(|header| header.last().map(|val| val.as_str()).unwrap());
                             if let Err(err) = validator(header_name, header_found) {
-                                return Response::new(400).body_json(&err).unwrap_or_else(
+                                return Response::new(StatusCode::BadRequest).body_json(&err).unwrap_or_else(
                                         |err| {
-                                            return Response::new(500).body_string(format!(
+                                            return Response::new(StatusCode::InternalServerError).body_string(format!(
                                                 "cannot serialize your header validator for '{}' error : {:?}",
                                                 header_name,
                                                 err
@@ -333,9 +343,9 @@ where
                             if let Err(err) =
                                 validator(cookie_name, cookie_found.as_ref().map(|c| c.value()))
                             {
-                                return Response::new(400).body_json(&err).unwrap_or_else(
+                                return Response::new(StatusCode::BadRequest).body_json(&err).unwrap_or_else(
                                         |err| {
-                                            return Response::new(500).body_string(format!(
+                                            return Response::new(StatusCode::InternalServerError).body_string(format!(
                                                 "cannot serialize your cookie validator for '{}' error : {:?}",
                                                 cookie_name,
                                                 err
@@ -355,13 +365,13 @@ where
 #[cfg(test)]
 mod tests {
 
-    use super::{HttpField, ValidatorMiddleware};
+    use super::{HttpField, StatusCode, ValidatorMiddleware};
 
     use async_std::io::prelude::*;
     use futures::executor::block_on;
-    use http_service::Body;
     use http_service_mock::make_server;
     use serde::{Deserialize, Serialize};
+    use tide::http_types;
 
     #[inline]
     fn is_number(field_name: &str, field_value: Option<&str>) -> Result<(), String> {
@@ -390,17 +400,23 @@ mod tests {
         let mut server = make_server(inner.into_http_service()).unwrap();
 
         let mut buf = Vec::new();
-        let req = http::Request::get("/foo/4").body(Body::empty()).unwrap();
-        let res = server.simulate(req).unwrap();
+        let req = http_types::Request::new(
+            http_types::Method::Get,
+            "http://localhost/foo/4".parse().unwrap(),
+        );
+        let mut res = server.simulate(req).unwrap();
         assert_eq!(res.status(), 200);
-        block_on(res.into_body().read_to_end(&mut buf)).unwrap();
+        block_on(res.read_to_end(&mut buf)).unwrap();
         assert_eq!(&*buf, &*b"foo");
 
         buf.clear();
-        let req = http::Request::get("/foo/bar").body(Body::empty()).unwrap();
-        let res = server.simulate(req).unwrap();
-        assert_eq!(res.status(), 400);
-        block_on(res.into_body().read_to_end(&mut buf)).unwrap();
+        let req = http_types::Request::new(
+            http_types::Method::Get,
+            "http://localhost/foo/bar".parse().unwrap(),
+        );
+        let mut res = server.simulate(req).unwrap();
+        assert_eq!(res.status(), StatusCode::BadRequest);
+        block_on(res.read_to_end(&mut buf)).unwrap();
         assert_eq!(
             String::from_utf8_lossy(&buf[..]),
             String::from(r#""field 'bar' = 'bar' is not a valid number""#)
@@ -449,21 +465,24 @@ mod tests {
         let mut server = make_server(inner.into_http_service()).unwrap();
 
         let mut buf = Vec::new();
-        let req = http::Request::get("/foo?test=coucou")
-            .body(Body::empty())
-            .unwrap();
-        let res = server.simulate(req).unwrap();
+        let req = http_types::Request::new(
+            http_types::Method::Get,
+            "http://localhost/foo?test=coucou".parse().unwrap(),
+        );
+        let mut res = server.simulate(req).unwrap();
         assert_eq!(res.status(), 200);
-        block_on(res.into_body().read_to_end(&mut buf)).unwrap();
+        block_on(res.read_to_end(&mut buf)).unwrap();
         assert_eq!(&*buf, &*b"foo");
 
         buf.clear();
-        let req = http::Request::get("/foo?test=blablablablabla")
-            .body(Body::empty())
-            .unwrap();
-        let res = server.simulate(req).unwrap();
-        assert_eq!(res.status(), 400);
-        block_on(res.into_body().read_to_end(&mut buf)).unwrap();
+
+        let req = http_types::Request::new(
+            http_types::Method::Get,
+            "http://localhost/foo?test=blablablablabla".parse().unwrap(),
+        );
+        let mut res = server.simulate(req).unwrap();
+        assert_eq!(res.status(), StatusCode::BadRequest);
+        block_on(res.read_to_end(&mut buf)).unwrap();
 
         let err: CustomError = serde_json::from_slice(&buf[..]).unwrap();
 
@@ -520,22 +539,25 @@ mod tests {
         let mut server = make_server(inner.into_http_service()).unwrap();
 
         let mut buf = Vec::new();
-        let req = http::Request::get("/foo?test=coucou")
-            .header("X-Is-Connected", "true")
-            .body(Body::empty())
-            .unwrap();
-        let res = server.simulate(req).unwrap();
+
+        let mut req = http_types::Request::new(
+            http_types::Method::Get,
+            "http://localhost/foo?test=coucou".parse().unwrap(),
+        );
+        req.insert_header("X-Is-Connected", "true").unwrap();
+        let mut res = server.simulate(req).unwrap();
         assert_eq!(res.status(), 200);
-        block_on(res.into_body().read_to_end(&mut buf)).unwrap();
+        block_on(res.read_to_end(&mut buf)).unwrap();
         assert_eq!(&*buf, &*b"foo");
 
         buf.clear();
-        let req = http::Request::get("/foo?test=foo")
-            .body(Body::empty())
-            .unwrap();
-        let res = server.simulate(req).unwrap();
-        assert_eq!(res.status(), 400);
-        block_on(res.into_body().read_to_end(&mut buf)).unwrap();
+        let req = http_types::Request::new(
+            http_types::Method::Get,
+            "http://localhost/foo?test=coucou".parse().unwrap(),
+        );
+        let mut res = server.simulate(req).unwrap();
+        assert_eq!(res.status(), StatusCode::BadRequest);
+        block_on(res.read_to_end(&mut buf)).unwrap();
 
         let err: CustomError = serde_json::from_slice(&buf[..]).unwrap();
 

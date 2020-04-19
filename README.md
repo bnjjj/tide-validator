@@ -67,7 +67,7 @@ app.at("/test/:age")
         let cat = Cat {
             name: "Gribouille".into(),
         };
-        tide::Response::new(200).body_json(&cat).unwrap()
+        tide::Response::new(StatusCode::Ok).body_json(&cat).unwrap()
      });
 app.listen("127.0.0.1:8080").await?;
 ```
@@ -99,7 +99,7 @@ app.at("/test")
            let cat = Cat {
                 name: "Mozart".into(),
            };
-            tide::Response::new(200).body_json(&cat).unwrap()
+            tide::Response::new(StatusCode::Ok).body_json(&cat).unwrap()
         },
     );
 
