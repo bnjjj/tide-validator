@@ -12,6 +12,11 @@
     <img src="https://img.shields.io/badge/docs-latest-blue.svg?style=flat-square"
       alt="docs.rs docs" />
   </a>
+  <!-- github action status -->
+  <a href="https://github.com/bnjjj/tide-validator/actions?query=workflow%3ARust">
+    <img src="https://github.com/bnjjj/tide-validator/workflows/Rust/badge.svg"
+      alt="github action status" />
+  </a>
 </div>
 
 __tide-validator is a middleware working with [Tide](https://github.com/http-rs/tide), a web framework in Rust which let you validate your data coming from a request. You'll be able to create custom validators to validate your HTTP parameters, query parameters, cookies and headers.__
