@@ -243,11 +243,11 @@ where
 
                         match ctx.param(param_name) {
                             Err(_err) => {
-                                return Ok(Response::new(StatusCode::Ok));
+                                return Ok(Response::new(StatusCode::BadRequest));
                             }
                             Ok(param_found) => {
                                 if let Err(_err) = validator(param_name, Some(param_found)) {
-                                    return Ok(Response::new(StatusCode::Ok));
+                                    return Ok(Response::new(StatusCode::InternalServerError));
                                 }
                             }
                         }
@@ -278,7 +278,7 @@ where
                         let c = header_found.map(|h| h.last().as_str());
 
                         if let Err(_err) = validator(header_name, c) {
-                            return Ok(Response::new(StatusCode::Ok));
+                            return Ok(Response::new(StatusCode::InternalServerError));
                         }
                     }
                 }
@@ -288,7 +288,7 @@ where
                         if let Err(_err) =
                             validator(cookie_name, cookie_found.as_ref().map(|c| c.value()))
                         {
-                            return Ok(Response::new(StatusCode::Ok));
+                            return Ok(Response::new(StatusCode::InternalServerError));
                         }
                     }
                 }
