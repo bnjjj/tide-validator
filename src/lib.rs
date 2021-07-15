@@ -260,7 +260,7 @@ where
                         // }
 
                         if let Err(err) = validator(param_name, Some(param_found)) {
-                            let mut response = Response::new(StatusCode::BadRequest);
+                            let mut response = Response::new(StatusCode::NoContent);
                             let body_json = Body::from_json(&json!(&err))?;
                             response.set_body(body_json);
                             return Ok(response);
