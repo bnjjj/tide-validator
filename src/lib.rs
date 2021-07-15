@@ -231,7 +231,7 @@ where
             match param_name {
                 HttpField::Param(param_name) => {
                     for validator in validators {
-                        let param_found = ctx.param(param_name).unwrap();
+                        // let param_found = ctx.param(param_name).unwrap();
                         // // let opt: Option<String> = Some(param_found.to_owned());
                         // // let value = opt.as_ref().map(|x| &**x).unwrap_or("");
                         // if let Err(err) = validator(param_name, Some(param_found)) {
@@ -241,30 +241,30 @@ where
                         //     return Ok(response);
                         // }
 
-                        // match ctx.param(param_name) {
-                        //     Err(_err) => {
-                        //         let mut response = Response::new(StatusCode::BadRequest);
-                        //         let body_json =
-                        //             Body::from_json(&json!({ "error": StatusCode::BadRequest }))?;
-                        //         response.set_body(body_json);
-                        //         return Ok(response);
-                        //     }
-                        //     Ok(param_found) => {
-                        //         if let Err(err) = validator(param_name, Some(param_found)) {
-                        //             let mut response = Response::new(StatusCode::BadRequest);
-                        //             let body_json = Body::from_json(&json!(&err))?;
-                        //             response.set_body(body_json);
-                        //             return Ok(response);
-                        //         }
-                        //     }
-                        // }
-
-                        if let Err(err) = validator(param_name, Some(param_found)) {
-                            let mut response = Response::new(StatusCode::NoContent);
-                            let body_json = Body::from_json(&json!(&err))?;
-                            response.set_body(body_json);
-                            return Ok(response);
+                        match ctx.param(param_name) {
+                            Err(_err) => {
+                                let mut response = Response::new(StatusCode::BadRequest);
+                                let body_json =
+                                    Body::from_json(&json!({ "error": StatusCode::NoContent }))?;
+                                response.set_body(body_json);
+                                return Ok(response);
+                            }
+                            Ok(param_found) => {
+                                if let Err(err) = validator(param_name, Some(param_found)) {
+                                    let mut response = Response::new(StatusCode::BadRequest);
+                                    let body_json = Body::from_json(&json!(&err))?;
+                                    response.set_body(body_json);
+                                    return Ok(response);
+                                }
+                            }
                         }
+
+                        // if let Err(err) = validator(param_name, Some(param_found)) {
+                        //     let mut response = Response::new(StatusCode::NoContent);
+                        //     let body_json = Body::from_json(&json!(&err))?;
+                        //     response.set_body(body_json);
+                        //     return Ok(response);
+                        // }
                     }
                 }
                 HttpField::QueryParam(param_name) => {
