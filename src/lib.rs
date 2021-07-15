@@ -243,25 +243,14 @@ where
 
                         match ctx.param(param_name) {
                             Err(_err) => {
-                        
-                                return Ok(Response::new(StatusCode::BadRequest));
+                                return Ok(Response::new(StatusCode::Ok));
                             }
                             Ok(param_found) => {
-                                if let Err(err) = validator(param_name, Some(param_found)) {
-                                    let mut response = Response::new(StatusCode::BadRequest);
-                                    let body_json = Body::from_json(&json!(&err))?;
-                                    response.set_body(body_json);
-                                    return Ok(response);
+                                if let Err(_err) = validator(param_name, Some(param_found)) {
+                                    return Ok(Response::new(StatusCode::Ok));
                                 }
                             }
                         }
-
-                        // if let Err(err) = validator(param_name, Some(param_found)) {
-                        //     let mut response = Response::new(StatusCode::NoContent);
-                        //     let body_json = Body::from_json(&json!(&err))?;
-                        //     response.set_body(body_json);
-                        //     return Ok(response);
-                        // }
                     }
                 }
                 HttpField::QueryParam(param_name) => {
@@ -289,7 +278,7 @@ where
                         let c = header_found.map(|h| h.last().as_str());
 
                         if let Err(_err) = validator(header_name, c) {
-                            return Ok(Response::new(StatusCode::BadRequest));
+                            return Ok(Response::new(StatusCode::Ok));
                         }
                     }
                 }
@@ -299,7 +288,7 @@ where
                         if let Err(_err) =
                             validator(cookie_name, cookie_found.as_ref().map(|c| c.value()))
                         {
-                            return Ok(Response::new(StatusCode::BadRequest));
+                            return Ok(Response::new(StatusCode::Ok));
                         }
                     }
                 }
